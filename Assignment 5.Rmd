@@ -1,0 +1,159 @@
+---
+title: "ML Assignment-5"
+author: "Riba Khan"
+date: "17/04/2022"
+output: pdf_document
+---
+
+```{r}
+# Importing the dataset
+library(readr)
+Cereals <- read_csv("Cereals.csv")
+View(Cereals)
+
+#Importing required libraries
+library(cluster)
+library(caret)
+library(dendextend)
+library(knitr)
+library(factoextra)
+
+# tASK 1
+CerealsData <- data.frame(Cereals[,4:16])
+
+#Preprocessing the data
+#Remmoving missing values
+CerealsData <- na.omit(CerealsData)
+
+#Data Normalization
+CerealsDataScale <- scale(CerealsData)
+
+#Applying hierarchical clustering to the data using Euclidean distance 
+Distance <- dist(CerealsDataScale, method = "euclidean")
+#Using complete
+HClustering_complete <- hclust(distance, method = "complete")
+
+#Plotting the dendogram
+plot(HClustering_complete, cex = 0.6, hang = -1)
+
+#Using agnes function to compare clustering with 
+ #single linkage, complete linkage, average linkage and Ward.
+
+#Single
+HClusteringSingle <- agnes(CerealsDataScale, method = "single")
+#Complete
+HClusteringComplete <- agnes(CerealsDataScale,method = "complete")
+#Average
+HClusteringAverage <- agnes(CerealsDataScale, method = "average")
+#Ward
+HClusteringWard <- agnes(CerealsDataScale, method = "ward")
+
+#Comparing the agglomerative coefficients for all the above agnes 
+print(HClusteringSingle$ac)
+print(HClusteringComplete$ac)
+print(HClusteringAverage$ac)
+print(HClusteringWard$ac)
+
+#Results show ward agnes is the best method with value of 0.904
+
+
+# TASK 2
+# To choose the number of Clusters
+
+# I will choose k = 4 and k = 6 and then compare the results
+#k = 4
+pltree(HClusteringWard, cex = 0.6, hang = -1, main = "Dendrogram of agnes (Using Ward)")
+rect.hclust(HClusteringWard, k = 4, border = 1:4)
+Cluster1 <- cutree(HClusteringWard, k=4)
+DataFrame1 <- as.data.frame(cbind(CerealsDataScale,Cluster1))
+
+# k = 6
+pltree(HClusteringWard, cex = 0.6, hang = -1, main = "Dendrogram of agnes (Using Ward)")
+rect.hclust(HClusteringWard, k = 6, border = 1:4)
+Cluster2 <- cutree(HClusteringWard, k=6)
+DataFrame2 <- as.data.frame(cbind(CerealsDataScale,Cluster2))
+
+#According to my understanding I would choose k = 4 as the cluster 
+ #height apppears to be close 
+
+# To check the structure of the clusters and on their stability
+#Creating Partitions
+#set seed
+set.seed(123)
+Part1 <- CerealsData[1:50,]
+Part2 <- CerealsData[51:74,]
+
+
+#Performing Hierarchial Clustering,consedering k = 4.
+Ag_single <- agnes(scale(Part1), method = "single")
+
+Ag_complete <- agnes(scale(Part1), method = "complete")
+
+Ag_average <- agnes(scale(Part1), method = "average")
+
+Ag_ward <- agnes(scale(Part1), method = "ward")
+
+cbind(single=Ag_single$ac , complete=Ag_complete$ac ,
+average= Ag_average$ac , ward= Ag_ward$ac)
+# Creating dendogram of the partitioned data
+pltree(Ag_ward, cex = 0.6, hang = -1, 
+       main = "Dendogram of Agnes ( Ward)")
+rect.hclust(Ag_ward, k = 4, border = 2:5)
+c <- cutree(Ag_ward, k = 4)
+
+
+#Calculating centers to assess the consistency of data.
+
+answer <- as.data.frame(cbind(Part1, c))
+answer[answer$c==1,]
+
+centroid_1 <- colMeans(answer[answer$c==1,])
+answer[answer$c==2,]
+
+centroid_2 <- colMeans(answer[answer$c==2,])
+answer[answer$c==3,]
+
+centroid_3 <- colMeans(answer[answer$c==3,])
+answer[answer$c==4,]
+
+centroid_4 <- colMeans(answer[answer$c==4,])
+
+#binding the four centers
+centroids <- rbind(centroid_1, centroid_2, centroid_3, centroid_4)
+centers <- as.data.frame(rbind(centroids[,-14], Part2))
+
+#Calculating the Distance 
+D1 <- get_dist(centers)
+Matrix1 <- as.matrix(D1)
+df1 <- data.frame(data=seq(1,nrow(Part2),1), Clusters = rep(0,nrow(Part2)))
+for(i in 1:nrow(Part2)) 
+{df1[i,2] <- which.min(Matrix1[i+4, 1:4])}
+df1
+
+# Task 3
+# Determing the healthiest cluster
+
+# I am selecting that is best cereal for breakfast which will contain 
+ # low sugar and sodium and high protien and fiber
+Healthy_Cluster <- Cereals
+Healthy_Cluster_na <- na.omit(Healthy_Cluster)
+Clust <- cbind(Healthy_Cluster_na, Cluster1)
+Clust[Clust$Cluster1==1,]
+Clust[Clust$Cluster1==2,]
+Clust[Clust$Cluster1==3,]
+Clust[Clust$Cluster1==4,]
+
+
+# CalculatingMean ratings to determine the best cluster.
+mean(Clust[Clust$Cluster1==1,"rating"])
+mean(Clust[Clust$Cluster1==2,"rating"])
+mean(Clust[Clust$Cluster1==3,"rating"])
+mean(Clust[Clust$Cluster1==4,"rating"])
+
+# Cluster 1 is the healthiest because of the mean rating being 
+ # the highest i.e 73.84 , hence we choose cluster 1
+
+
+
+
+```
